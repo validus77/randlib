@@ -86,38 +86,30 @@ namespace validus_randlab {
 
         float P;
         int level;
-        SkipNode<T>* header;
+        SkipNode<T> *header;
         NodeAllocator nodeAllocator;
 
     public:
         explicit SkipList()
-                : P(0.5), level(0) {
+                : SkipList(0.5) {
+        }
+
+        explicit SkipList(float probability)
+                : P(probability), level(0) {
             header = nodeAllocator.allocate(1);
             nodeAllocator.construct(header, MAX_LEVEL, T());
         }
 
         ~SkipList() {
-            SkipNode<T>* current = header->forward[0];
+            SkipNode<T> *current = header->forward[0];
             while (current) {
-                SkipNode<T>* temp = current;
+                SkipNode<T> *temp = current;
                 current = current->forward[0];
                 nodeAllocator.destroy(temp);
                 nodeAllocator.deallocate(temp, 1);
             }
             nodeAllocator.destroy(header);
             nodeAllocator.deallocate(header, 1);
-        }
-
-        // Generate a random level for a new node
-        [[nodiscard]] int randomLevel() const {
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> dis(0, 1);
-            int lvl = 0;
-            while (dis(gen) < P && lvl < MAX_LEVEL) {
-                lvl++;
-            }
-            return lvl;
         }
 
         // Insert a value into the Skip List
@@ -204,8 +196,12 @@ namespace validus_randlab {
             return end();
         }
 
-        T& operator[](int index) {
-            SkipNode<T>* current = header->forward[0];
+        void changeNewLevelProbability(float probability) {
+            P = probability;
+        }
+
+        T &operator[](int index) {
+            SkipNode<T> *current = header->forward[0];
             int i = 0;
 
             while (current) {
@@ -254,18 +250,17 @@ namespace validus_randlab {
             return const_iterator(nullptr);
         }
 
-        // Print the contents of the Skip List
-        void display() {
-            std::cout << "Skip List:" << std::endl;
-            for (int i = 0; i <= level; i++) {
-                SkipNode<T>* node = header->forward[i];
-                std::cout << "Level " << i << ": ";
-                while (node) {
-                    std::cout << node->value << " ";
-                    node = node->forward[i];
-                }
-                std::cout << std::endl;
+    private:
+        // Generate a random level for a new node
+        [[nodiscard]] int randomLevel() const {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<float> dis(0, 1);
+            int lvl = 0;
+            while (dis(gen) < P && lvl < MAX_LEVEL) {
+                lvl++;
             }
+            return lvl;
         }
     };
 }
