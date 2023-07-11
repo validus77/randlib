@@ -16,15 +16,30 @@ int main(int argc, char** argv) {
     list.insert(93);
 
 
-    for (int v : list) {
+    for (int v: list) {
         std::cout << v << " ";
     }
     std::cout << std::endl;
 
-    if(list.find(13) != list.end()) {
+    if (list.find(13) != list.end()) {
         std::cout << "found 13" << std::endl;
     } else {
         std::cout << "not found 13" << std::endl;
     }
+
+    list.erase(list.find(13));
+    for (int v: list) {
+        std::cout << v << " ";
+    }
+
+    std::cout << std::endl;
+
+    SkipList<int>::iterator it = list.find(6);
+    list.erase(it, it + 4);
+    for (int v: list) {
+        std::cout << v << " ";
+    };
+
+    std::cout << std::endl;
     return 0;
 }

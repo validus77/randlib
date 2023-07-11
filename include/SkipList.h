@@ -39,15 +39,36 @@ namespace validus_randlab {
             return current->value;
         }
 
-        bool operator==(const SkipListIterator& other) const {
+        bool operator==(const SkipListIterator &other) const {
             return current == other.current;
         }
 
-        bool operator!=(const SkipListIterator& other) const {
+        bool operator!=(const SkipListIterator &other) const {
             return !(*this == other);
         }
 
-        SkipListIterator& operator++() {
+        SkipListIterator operator+(int n) const {
+            SkipListIterator iter = *this;
+            for (int i = 0; i < n; ++i) {
+                if (!iter.current) {
+                    throw std::out_of_range("Iterator advanced past end.");
+                }
+                iter.current = iter.current->forward[0];
+            }
+            return iter;
+        }
+
+        SkipListIterator &operator+=(int n) {
+            for (int i = 0; i < n; ++i) {
+                if (!this->current) {
+                    throw std::out_of_range("Iterator advanced past end.");
+                }
+                this->current = this->current->forward[0];
+            }
+            return *this;
+        }
+
+        SkipListIterator &operator++() {
             if (current)
                 current = current->forward[0];
             return *this;
@@ -86,6 +107,7 @@ namespace validus_randlab {
 
         float P;
         int level;
+        size_t size = 0;
         SkipNode<T> *header;
         NodeAllocator nodeAllocator;
 
@@ -93,6 +115,12 @@ namespace validus_randlab {
         explicit SkipList()
                 : SkipList(0.5) {
         }
+
+        // Defaulted copy constructor
+        SkipList(const SkipList &) = default;
+
+        // Defaulted move constructor
+        SkipList(SkipList &&) noexcept = default;
 
         explicit SkipList(float probability)
                 : P(probability), level(0) {
@@ -154,6 +182,7 @@ namespace validus_randlab {
                 new_node->forward[i] = update[i]->forward[i];
                 update[i]->forward[i] = new_node;
             }
+            size++;
             return iterator(new_node);
         }
 
@@ -194,6 +223,18 @@ namespace validus_randlab {
                 return const_iterator(current);
             }
             return end();
+        }
+
+        iterator erase(iterator pos) {
+            return erase_impl(pos);
+        }
+
+        iterator erase(iterator first, iterator last) {
+            return erase_range_impl(first, last);
+        }
+
+        size_t getSize() const {
+            return size;
         }
 
         void changeNewLevelProbability(float probability) {
@@ -251,6 +292,52 @@ namespace validus_randlab {
         }
 
     private:
+        iterator erase_impl(iterator pos) {
+            if (pos == end()) {
+                throw std::out_of_range("Cannot erase end iterator");
+            }
+
+            SkipNode<T> *node = header;
+            SkipNode<T> *to_delete = nullptr;
+            SkipNode<T> *update[MAX_LEVEL + 1];
+            memset(update, 0, sizeof(SkipNode<T> *) * (MAX_LEVEL + 1));
+
+            for (int i = level; i >= 0; --i) {
+                while (node->forward[i] != nullptr && compare{}(node->forward[i]->value, *pos)) {
+                    node = node->forward[i];
+                }
+                update[i] = node;
+            }
+
+            node = node->forward[0];
+            if (node != nullptr && node->value == *pos) {
+                for (int i = 0; i <= level; ++i) {
+                    if (update[i]->forward[i] != node) {
+                        break;
+                    }
+                    update[i]->forward[i] = node->forward[i];
+                }
+
+                to_delete = node;
+                node = node->forward[0];
+                while (level > 0 && header->forward[level] == nullptr) {
+                    level--;
+                }
+                size--;
+            }
+
+            nodeAllocator.destroy(to_delete);
+            nodeAllocator.deallocate(to_delete, 1);
+            return iterator(node);
+        }
+
+        iterator erase_range_impl(iterator first, iterator last) {
+            while (first != last) {
+                first = erase_impl(first);
+            }
+            return first;
+        }
+
         // Generate a random level for a new node
         [[nodiscard]] int randomLevel() const {
             std::random_device rd;
@@ -262,5 +349,7 @@ namespace validus_randlab {
             }
             return lvl;
         }
+
+
     };
 }
